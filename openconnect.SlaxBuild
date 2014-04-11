@@ -1,0 +1,55 @@
+#!/bin/bash
+. /usr/share/slax/slaxbuildlib
+
+
+SLAX_BUNDLE_NAME="openconnect"
+
+SLAX_BUNDLE_VERSION="5.99"
+
+
+SLAX_BUNDLE_DESCRIPTION="OpenConnect is a client for Cisco's AnyConnect SSL VPN, 
+which is supported by the ASA5500 Series, by IOS 12.4(9)T or later on 
+Cisco SR500, 870, 880, 1800, 2800, 3800, 7200 Series and Cisco 7301 Routers, and probably others."
+
+SLAX_BUNDLE_CATEGORIES="network"
+
+SLAX_BUNDLES_REQUIRED="openssl-solibs,vpnc"
+
+SLAX_BUNDLES_REQUIRED_TO_COMPILE_ONLY="openssl-solibs,vpnc,python"
+
+SLAX_BUNDLE_MAINTAINER_NAME="lht"
+SLAX_BUNDLE_MAINTAINER_EMAIL="holylight@gmail.com"
+
+SLAX_BUNDLE_SOURCE_DOWNLOAD[0]="ftp://ftp.infradead.org/pub/openconnect/${SLAX_BUNDLE_NAME}-${SLAX_BUNDLE_VERSION}.tar.gz"
+SLAX_BUNDLE_SOURCE_DOWNLOAD[1]=""
+SLAX_BUNDLE_SOURCE_DOWNLOAD[2]=""
+
+
+
+check_variables_for_errors
+
+download_all_sources
+
+extract_all_sources
+
+init_bundle_target_dir
+
+activate_required_bundles
+
+
+umask 0022
+cd openconnect-${SLAX_BUNDLE_VERSION}
+CFLAGS="${SLAX_CFLAGS}" CXXFLAGS="${SLAX_CFLAGS}" ./configure ${SLAX_CONFIGURE_OPTIONS} --sysconfdir=/etc \
+	--with-vpnc-script=/etc/vpnc/vpnc-script \
+	--disable-nls
+	
+make || exit 1
+make install DESTDIR="${SLAX_BUNDLE_TARGET}"
+
+
+
+
+strip_unneeded_objects
+
+create_slax_bundle
+

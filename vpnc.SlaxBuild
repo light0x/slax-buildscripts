@@ -1,0 +1,51 @@
+#!/bin/bash
+. /usr/share/slax/slaxbuildlib
+
+
+SLAX_BUNDLE_NAME="vpnc"
+
+SLAX_BUNDLE_VERSION="0.5.3"
+
+
+SLAX_BUNDLE_DESCRIPTION="vpnc - client for cisco vpn concentrator"
+
+SLAX_BUNDLE_CATEGORIES="network"
+
+SLAX_BUNDLES_REQUIRED=""
+
+SLAX_BUNDLES_REQUIRED_TO_COMPILE_ONLY="perl"
+
+SLAX_BUNDLE_MAINTAINER_NAME="lht"
+SLAX_BUNDLE_MAINTAINER_EMAIL="holylight@gmail.com"
+
+SLAX_BUNDLE_SOURCE_DOWNLOAD[0]="http://www.unix-ag.uni-kl.de/~massar/vpnc/${SLAX_BUNDLE_NAME}-${SLAX_BUNDLE_VERSION}.tar.gz"
+SLAX_BUNDLE_SOURCE_DOWNLOAD[1]=""
+SLAX_BUNDLE_SOURCE_DOWNLOAD[2]=""
+
+
+
+check_variables_for_errors
+
+download_all_sources
+
+extract_all_sources
+
+init_bundle_target_dir
+
+activate_required_bundles
+
+
+umask 0022
+cd vpnc-${SLAX_BUNDLE_VERSION}
+make clean
+sed "s:^PREFIX=.*$:PREFIX=/usr:p" Makefile > Makefile.$$ && mv Makefile.$$ Makefile
+make || exit 1
+make install DESTDIR="${SLAX_BUNDLE_TARGET}"
+
+
+
+
+strip_unneeded_objects
+
+create_slax_bundle
+
