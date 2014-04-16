@@ -26,14 +26,13 @@
 . /usr/share/slax/slaxbuildlib
 
 
-SLAX_BUNDLE_NAME="netcat-openbsd"
+SLAX_BUNDLE_NAME="emacs-nox"
 
-SLAX_BUNDLE_VERSION="1.105_7"
+SLAX_BUNDLE_VERSION="24.3"
 
-# copy from arch
-SLAX_BUNDLE_DESCRIPTION="TCP/IP swiss army knife. OpenBSD variant."
+SLAX_BUNDLE_DESCRIPTION="GNU Emacs is an extensible, customizable text editor and more. At its core is an interpreter for Emacs Lisp, a dialect of the Lisp programming language with extensions to support text editing. This is a lightweight build of Emacs without ImageMagick, fftw, openEXR, jasper, or djvulibre dependencies."
 
-SLAX_BUNDLE_CATEGORIES="network"
+SLAX_BUNDLE_CATEGORIES="editors,develop"
 
 SLAX_BUNDLES_REQUIRED=""
 
@@ -42,9 +41,7 @@ SLAX_BUNDLES_REQUIRED_TO_COMPILE_ONLY=""
 SLAX_BUNDLE_MAINTAINER_NAME="lht"
 SLAX_BUNDLE_MAINTAINER_EMAIL="holylight@gmail.com"
 
-SLAX_BUNDLE_SOURCE_DOWNLOAD[0]="http://libbsd.freedesktop.org/releases/libbsd-0.6.0.tar.xz"
-SLAX_BUNDLE_SOURCE_DOWNLOAD[1]="http://ftp.debian.org/debian/pool/main/n/netcat-openbsd/netcat-openbsd_${SLAX_BUNDLE_VERSION%_*}.orig.tar.gz"
-SLAX_BUNDLE_SOURCE_DOWNLOAD[2]="http://ftp.debian.org/debian/pool/main/n/netcat-openbsd/netcat-openbsd_${SLAX_BUNDLE_VERSION/_/-}.debian.tar.gz"
+SLAX_BUNDLE_SOURCE_DOWNLOAD[0]="ftp://ftp.gnu.org/gnu/emacs/${SLAX_BUNDLE_NAME%-*}-${SLAX_BUNDLE_VERSION}.tar.xz"
 
 check_variables_for_errors
 
@@ -55,30 +52,19 @@ extract_all_sources
 init_bundle_target_dir
 
 activate_required_bundles
-pkgrel=6
 
-mkdir libbsd
-pushd libbsd || exit 1
-../libbsd-0.6.0/configure ${SLAX_CONFIGURE_OPTIONS} --sysconfdir=/etc
-make check
+mkdir -v ${SLAX_BUNDLE_NAME%-*}-${SLAX_BUNDLE_VERSION}-build
+pushd ${SLAX_BUNDLE_NAME%-*}-${SLAX_BUNDLE_VERSION}-build || exit 1
+../${SLAX_BUNDLE_NAME%-*}-${SLAX_BUNDLE_VERSION}/configure \
+    ${SLAX_CONFIGURE_OPTIONS} \
+    --sysconfdir=/etc \
+    --localstatedir=/var \
+    --with-x-toolkit=no \
+    --without-all
+
 make -j8 || make || exit 1
 make DESTDIR=${SLAX_BUNDLE_TARGET} install
-rm ${SLAX_BUNDLE_TARGET}/${SLAX_LIBDIR}/libbsd.a
-popd
 
-pushd ${SLAX_BUNDLE_NAME}-${SLAX_BUNDLE_VERSION%_*} || exit 1
-for i in `cat ../debian/patches/series`; do
-    echo "** patch $i" 1>&2
-    cat "../debian/patches/$i"
-done | patch -p1
-make \
-    PKG_CONFIG_PATH="${SLAX_BUNDLE_TARGET}/${SLAX_LIBDIR}/pkgconfig:$PKG_CONFIG_PATH" \
-    CFLAGS="${SLAX_CFLAGS} -DDEBIAN_VERSION=\"\\\"${pkgrel}\\\"\" -I${SLAX_BUNDLE_TARGET}/usr/include/" \
-    LDFLAGS="$LDFLAGS -L${SLAX_BUNDLE_TARGET}/${SLAX_LIBDIR} -lbsd"
-
-install -Dm0755 nc ${SLAX_BUNDLE_TARGET}/usr/bin/nc
-ln -s nc ${SLAX_BUNDLE_TARGET}/usr/bin/netcat
-install -Dm0644 nc.1 ${SLAX_BUNDLE_TARGET}/usr/share/man/man1/nc.1
 popd
 
 strip_unneeded_objects

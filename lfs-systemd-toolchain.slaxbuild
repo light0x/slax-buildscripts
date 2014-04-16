@@ -1,0 +1,338 @@
+#!/bin/bash
+
+# Written by Manfred Mueller <manfred.mueller@fluxflux.net>
+#
+# Copyright (c) 2013  Manfred Mueller, Muelheim, Germany
+#
+#   Permission to use, copy, modify, and distribute this software for
+#   any purpose with or without fee is hereby granted, provided that
+#   the above copyright notice and this permission notice appear in all
+#   copies.
+#
+#   THIS SOFTWARE IS PROVIDED ``AS IS'' AND ANY EXPRESSED OR IMPLIED
+#   WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF
+#   MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED.
+#   IN NO EVENT SHALL THE AUTHORS AND COPYRIGHT HOLDERS AND THEIR
+#   CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL,
+#   SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT
+#   LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF
+#   USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND
+#   ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY,
+#   OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT
+#   OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
+#   SUCH DAMAGE.
+# -----------------------------------------------------------------------------
+
+. /usr/share/slax/slaxbuildlib
+
+
+SLAX_BUNDLE_NAME="LFS-systemd-ToolChain"
+
+SLAX_BUNDLE_VERSION="20140412-systemd"
+# SLAX_BUNDLE_VERSION="systemd"
+
+SLAX_BUNDLE_DESCRIPTION="Tool chain for build LFS"
+
+SLAX_BUNDLE_CATEGORIES="devel"
+
+SLAX_BUNDLES_REQUIRED=""
+
+SLAX_BUNDLES_REQUIRED_TO_COMPILE_ONLY="bison m4"
+
+SLAX_BUNDLE_MAINTAINER_NAME="lht"
+SLAX_BUNDLE_MAINTAINER_EMAIL="holylight@gmail.com"
+
+case ${SLAX_BUNDLE_VERSION} in
+    "systemd" )
+	lfs_version=${SLAX_BUNDLE_VERSION/systemd/stable-systemd} ;;
+    "*-" )
+	lfs_version=${SLAX_BUNDLE_VERSION#*-} ;;
+esac
+
+SLAX_BUNDLE_SOURCE_DOWNLOAD[0]="http://www.linuxfromscratch.org/lfs/view/${lfs_version}/wget-list"
+SLAX_BUNDLE_SOURCE_DOWNLOAD[1]="http://www.linuxfromscratch.org/lfs/view/${lfs_version}/md5sums"
+SLAX_BUNDLE_SOURCE_DOWNLOAD[2]=""
+
+check_variables_for_errors
+activate_required_bundles
+
+TOOLCHAINSRC="binutils mpfr gmp mpc gcc linux glibc libstdc++"
+LFS=$HOME/lfs
+# Make sure $LFS/$TOOLCHAIN is created and linked to /$TOOLCHAIN,
+# required by gcc linker search path
+TOOLCHAIN=/toolchain
+LC_ALL=POSIX
+LFS_TGT=$(uname -m)-lfs-linux-gnu
+PATH=$TOOLCHAIN/bin:/bin:/usr/bin
+export LFS LC_ALL LFS_TGT PATH
+# Not safe for build gcc
+# export MAKEFLAGS='-j 2'
+SBU=3
+umask 022
+
+mkdir -p $LFS || exit 1
+pushd $LFS
+
+# download_all_sources
+[ -f wget-list ] || exit 1
+
+# SAVEIFS=$IFS
+# IFS=" "
+i=0
+for src in $TOOLCHAINSRC; do
+    for item in $(egrep "/${src}-[0-9a-z.]*\..*\$" $LFS/wget-list); do
+	SLAX_BUNDLE_SOURCE_DOWNLOAD[$i]=$item
+	echo "Prepare: ${SLAX_BUNDLE_SOURCE_DOWNLOAD[$i]}"
+	((i++))
+    done
+done
+# IFS=$SAVEIFS
+
+mkdir -pv $LFS/sources
+pushd $LFS/sources
+# Download source tarballs
+#
+# download_all_sources
+md5sum --quiet -c $LFS/md5sums
+popd
+
+# init_bundle_target_dir
+SLAX_BUNDLE_TARGET=$LFS/toolchain
+mkdir -pv $SLAX_BUNDLE_TARGET
+rm -rf $TOOLCHAIN
+ln -sv $SLAX_BUNDLE_TARGET $TOOLCHAIN
+
+mkdir -pv $LFS/builds
+pushd $LFS/builds
+
+# extract_all_sources
+# for i in "${SLAX_BUNDLE_SOURCE_DOWNLOAD[@]}"; do
+#     if echo "$i" | grep -q "://"; then
+#         tar -xf $LFS/sources/"$(basename "$i")"
+#     fi
+# done
+
+case $(uname -m) in
+  x86_64) mkdir -v $TOOLCHAIN/lib && ln -sv lib $TOOLCHAIN/lib64 ;;
+esac
+
+# Toolchain PASS 1
+#
+# MODULE=$(basename binutils-*); echo "Process module: $MODULE"
+# mkdir -v binutils_build
+# pushd binutils_build
+# ../$MODULE/configure     \
+#     --prefix=$TOOLCHAIN            \
+#     --with-sysroot=$LFS        \
+#     --with-lib-path=$TOOLCHAIN/lib \
+#     --target=$LFS_TGT          \
+#     --disable-nls              \
+#     --disable-werror
+
+# if [ $? = 0 ]; then
+#     make -j $SBU || make || exit 1
+#     make install
+# fi
+# popd
+
+# MODULE=$(basename gcc-*); echo "Process module: $MODULE"
+# pushd $MODULE
+# ln -sv ../mpfr-* mpfr
+# ln -sv ../gmp-* gmp
+# ln -sv ../mpc-* mpc
+
+# for file in \
+#  $(find gcc/config -name linux64.h -o -name linux.h -o -name sysv4.h)
+# do
+#   cp -uv $file{,.orig}
+#   sed -e "s@/lib\(64\)\?\(32\)\?/ld@${TOOLCHAIN}&@g" \
+#       -e "s@/usr@${TOOLCHAIN}@g" $file.orig > $file
+#   echo "
+# #undef STANDARD_STARTFILE_PREFIX_1
+# #undef STANDARD_STARTFILE_PREFIX_2
+# #define STANDARD_STARTFILE_PREFIX_1 \"${TOOLCHAIN}/lib/\"
+# #define STANDARD_STARTFILE_PREFIX_2 \"\"" >> $file
+#   touch $file.orig
+# done
+# sed -i '/k prot/agcc_cv_libc_provides_ssp=yes' gcc/configure
+# popd
+
+# mkdir -v gcc_build
+# pushd gcc_build
+# ../$MODULE/configure                               \
+#     --target=$LFS_TGT                                \
+#     --prefix=${TOOLCHAIN}                                  \
+#     --with-sysroot=$LFS                              \
+#     --with-newlib                                    \
+#     --without-headers                                \
+#     --with-local-prefix=${TOOLCHAIN}                       \
+#     --with-native-system-header-dir=${TOOLCHAIN}/include   \
+#     --disable-nls                                    \
+#     --disable-shared                                 \
+#     --disable-multilib                               \
+#     --disable-decimal-float                          \
+#     --disable-threads                                \
+#     --disable-libatomic                              \
+#     --disable-libgomp                                \
+#     --disable-libitm                                 \
+#     --disable-libmudflap                             \
+#     --disable-libquadmath                            \
+#     --disable-libsanitizer                           \
+#     --disable-libssp                                 \
+#     --disable-libstdc++-v3                           \
+#     --enable-languages=c,c++                         \
+#     --with-mpfr-include=$(pwd)/../$MODULE/mpfr/src \
+#     --with-mpfr-lib=$(pwd)/mpfr/src/.libs
+
+# if [ $? = 0 ]; then
+#     make || exit 1
+#     make install
+#     ln -sv libgcc.a `$LFS_TGT-gcc -print-libgcc-file-name | sed 's/libgcc/&_eh/'`
+# fi
+# popd
+
+MODULE=$(basename linux-*); echo "Process module: $MODULE"
+pushd $MODULE
+make mrproper
+make INSTALL_HDR_PATH=dest headers_install
+cp -rv dest/include/* ${TOOLCHAIN}/include
+popd
+
+MODULE=$(basename glibc-*); echo "Process module: $MODULE"
+pushd $MODULE
+patch -p1 < $LFS/sources/glibc-*.patch
+popd
+
+if [ ! -r /usr/include/rpc/types.h ]; then
+  su -c 'mkdir -pv /usr/include/rpc'
+  su -c 'cp -v sunrpc/rpc/*.h /usr/include/rpc'
+fi
+
+mkdir -v glibc_build
+pushd glibc_build
+../$MODULE/configure                               \
+      --prefix=${TOOLCHAIN}                               \
+      --host=$LFS_TGT                               \
+      --build=$(../$MODULE/scripts/config.guess) \
+      --disable-profile                             \
+      --enable-kernel=2.6.32                        \
+      --with-headers=${TOOLCHAIN}/include                 \
+      libc_cv_forced_unwind=yes                     \
+      libc_cv_ctors_header=yes                      \
+      libc_cv_c_cleanup=yes
+
+if [ $? = 0 ]; then
+    make || exit 1
+    make install
+fi
+popd
+
+# Now test
+#
+echo 'main(){}' > dummy.c
+$LFS_TGT-gcc dummy.c || exit 1
+readelf -l a.out | grep ": ${TOOLCHAIN}"
+rm -v dummy.c a.out
+
+MODULE=$(basename gcc-*); echo "Process module: $MODULE"
+mkdir -v libstdc++_build
+pushd libstdc++_build
+../$MODULE/libstdc++-v3/configure                    \
+    --host=$LFS_TGT                 \
+    --prefix=${TOOLCHAIN}                 \
+    --disable-multilib              \
+    --disable-shared                \
+    --disable-nls                   \
+    --disable-libstdcxx-threads     \
+    --disable-libstdcxx-pch         \
+    --with-gxx-include-dir=${TOOLCHAIN}/$LFS_TGT/include/c++/4.8.2
+
+if [ $? = 0 ]; then
+    make -j $SBU || make || exit 1
+    make install
+fi
+popd
+
+# Toolchain PASS 2
+#
+MODULE=$(basename binutils-*); echo "Process module: $MODULE"
+mkdir -v binutils_build_p2
+pushd binutils_build_p2
+CC=$LFS_TGT-gcc                \
+    AR=$LFS_TGT-ar             \
+    RANLIB=$LFS_TGT-ranlib     \
+    ../$MODULE/configure       \
+    --prefix=$TOOLCHAIN        \
+    --disable-nls              \
+    --with-lib-path=$TOOLCHAIN/lib \
+    --with-sysroot
+
+if [ $? = 0 ]; then
+    make -j $SBU || make || exit 1
+    make install
+    make -C ld clean
+    make -C ld LIB_PATH=/usr/lib:/lib
+    cp -v ld/ld-new $TOOLCHAIN/bin
+fi
+popd
+
+MODULE=$(basename gcc-*); echo "Process module: $MODULE"
+pushd $MODULE
+cat gcc/limitx.h gcc/glimits.h gcc/limity.h > \
+    `dirname $($LFS_TGT-gcc -print-libgcc-file-name)`/include-fixed/limits.h
+case `uname -m` in
+    i?86) sed -i 's/^T_CFLAGS =$/& -fomit-frame-pointer/' gcc/Makefile.in ;;
+esac
+for file in \
+ $(find gcc/config -name linux64.h -o -name linux.h -o -name sysv4.h)
+do
+  cp -uv $file{,.orig}
+  sed -e "s@/lib\(64\)\?\(32\)\?/ld@${TOOLCHAIN}&@g" \
+      -e "s@/usr@${TOOLCHAIN}@g" $file.orig > $file
+  echo "
+#undef STANDARD_STARTFILE_PREFIX_1
+#undef STANDARD_STARTFILE_PREFIX_2
+#define STANDARD_STARTFILE_PREFIX_1 \"${TOOLCHAIN}/lib/\"
+#define STANDARD_STARTFILE_PREFIX_2 \"\"" >> $file
+  touch $file.orig
+done
+ln -sv ../mpfr-* mpfr
+ln -sv ../gmp-* gmp
+ln -sv ../mpc-* mpc
+popd
+
+mkdir -v gcc_build_p2
+pushd gcc_build_p2
+../$MODULE/configure                               \
+    --prefix=${TOOLCHAIN}                                  \
+    --with-local-prefix=${TOOLCHAIN}                       \
+    --with-native-system-header-dir=${TOOLCHAIN}/include   \
+    --enable-clocale=gnu                             \
+    --enable-shared                                  \
+    --enable-threads=posix                           \
+    --enable-__cxa_atexit                            \
+    --enable-languages=c,c++                         \
+    --disable-libstdcxx-pch                          \
+    --disable-multilib                               \
+    --disable-bootstrap                              \
+    --disable-libgomp                                \
+    --with-mpfr-include=$(pwd)/../$MODULE/mpfr/src \
+    --with-mpfr-lib=$(pwd)/mpfr/src/.libs
+
+if [ $? = 0 ]; then
+    make || exit 1
+    make install
+    ln -sv gcc $TOOLCHAIN/bin/cc
+fi
+popd
+
+# Now test
+#
+echo 'main(){}' > dummy.c
+cc dummy.c || exit 1
+readelf -l a.out | grep ": ${TOOLCHAIN}"
+rm -v dummy.c a.out
+
+# export PATH=$PATH:/sbin:/usr/sbin
+# strip_unneeded_objects
+# create_slax_bundle
