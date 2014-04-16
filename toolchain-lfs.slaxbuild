@@ -26,10 +26,10 @@
 . /usr/share/slax/slaxbuildlib
 
 
-SLAX_BUNDLE_NAME="ToolChain-LFS"
+SLAX_BUNDLE_NAME="LFS-systemd-ToolChain"
 
-SLAX_BUNDLE_VERSION="7.0"
-
+SLAX_BUNDLE_VERSION="20140412-systemd"
+# SLAX_BUNDLE_VERSION="systemd"
 
 SLAX_BUNDLE_DESCRIPTION="Tool chain for build LFS"
 
@@ -37,16 +37,20 @@ SLAX_BUNDLE_CATEGORIES="devel"
 
 SLAX_BUNDLES_REQUIRED=""
 
-SLAX_BUNDLES_REQUIRED_TO_COMPILE_ONLY="core bison m4"
+SLAX_BUNDLES_REQUIRED_TO_COMPILE_ONLY="bison m4"
 
 SLAX_BUNDLE_MAINTAINER_NAME="lht"
 SLAX_BUNDLE_MAINTAINER_EMAIL="holylight@gmail.com"
 
-# lfs_release=stable-systemd
-lfs_release=systemd
+case ${SLAX_BUNDLE_VERSION} in
+    "systemd" )
+	lfs_version=${SLAX_BUNDLE_VERSION/systemd/stable-systemd} ;;
+    "*-" )
+	lfs_version=${SLAX_BUNDLE_VERSION#*-} ;;
+esac
 
-SLAX_BUNDLE_SOURCE_DOWNLOAD[0]="http://www.linuxfromscratch.org/lfs/view/${lfs_release}/wget-list"
-SLAX_BUNDLE_SOURCE_DOWNLOAD[1]="http://www.linuxfromscratch.org/lfs/view/${lfs_release}/md5sums"
+SLAX_BUNDLE_SOURCE_DOWNLOAD[0]="http://www.linuxfromscratch.org/lfs/view/${lfs_version}/wget-list"
+SLAX_BUNDLE_SOURCE_DOWNLOAD[1]="http://www.linuxfromscratch.org/lfs/view/${lfs_version}/md5sums"
 SLAX_BUNDLE_SOURCE_DOWNLOAD[2]=""
 
 check_variables_for_errors
@@ -66,10 +70,11 @@ export LFS LC_ALL LFS_TGT PATH
 SBU=3
 umask 022
 
-mkdir -p $LFS
+mkdir -p $LFS || exit 1
 pushd $LFS
 
-# download_all_sources
+download_all_sources
+[ -f wget-list ] || exit 1
 
 # SAVEIFS=$IFS
 # IFS=" "
@@ -85,9 +90,9 @@ done
 
 mkdir -pv $LFS/sources
 pushd $LFS/sources
-# download source tarballs
+# Download source tarballs
 #
-# download_all_sources
+download_all_sources
 md5sum --quiet -c $LFS/md5sums
 popd
 
@@ -101,11 +106,11 @@ mkdir -pv $LFS/builds
 pushd $LFS/builds
 
 # extract_all_sources
-# for i in "${SLAX_BUNDLE_SOURCE_DOWNLOAD[@]}"; do
-#     if echo "$i" | grep -q "://"; then
-#         tar -xf $LFS/sources/"$(basename "$i")"
-#     fi
-# done
+for i in "${SLAX_BUNDLE_SOURCE_DOWNLOAD[@]}"; do
+    if echo "$i" | grep -q "://"; then
+        tar -xf $LFS/sources/"$(basename "$i")"
+    fi
+done
 
 case $(uname -m) in
   x86_64) mkdir -v $TOOLCHAIN/lib && ln -sv lib $TOOLCHAIN/lib64 ;;
