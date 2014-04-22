@@ -1,0 +1,179 @@
+#!/bin/bash
+
+# Written by Manfred Mueller <manfred.mueller@fluxflux.net>
+#
+# Copyright (c) 2013  Manfred Mueller, Muelheim, Germany
+#
+#   Permission to use, copy, modify, and distribute this software for
+#   any purpose with or without fee is hereby granted, provided that
+#   the above copyright notice and this permission notice appear in all
+#   copies.
+#
+#   THIS SOFTWARE IS PROVIDED ``AS IS'' AND ANY EXPRESSED OR IMPLIED
+#   WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF
+#   MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED.
+#   IN NO EVENT SHALL THE AUTHORS AND COPYRIGHT HOLDERS AND THEIR
+#   CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL,
+#   SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT
+#   LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF
+#   USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND
+#   ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY,
+#   OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT
+#   OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
+#   SUCH DAMAGE.
+# -----------------------------------------------------------------------------
+
+. /usr/share/slax/slaxbuildlib
+
+# Copy from linuxfromscratch
+SLAX_BUNDLE_NAME="gnupg-bundle"
+
+SLAX_BUNDLE_VERSION="2.0.22"
+
+SLAX_BUNDLE_CATEGORIES="security"
+
+SLAX_BUNDLES_REQUIRED=""
+
+SLAX_BUNDLES_REQUIRED_TO_COMPILE_ONLY=""
+
+SLAX_BUNDLE_MAINTAINER_NAME="lht"
+SLAX_BUNDLE_MAINTAINER_EMAIL="holylight@gmail.com"
+
+# Use i++ or ${#SLAX_BUNDLE_SOURCE_DOWNLOAD[@]}
+declare -a SLAX_BUNDLE_SOURCE_DOWNLOAD
+i=0
+# SLAX_BUNDLE_SOURCE_DOWNLOAD[((i++))]=http://download.savannah.gnu.org/releases/attr/attr-2.4.47.src.tar.gz
+SLAX_BUNDLE_SOURCE_DOWNLOAD[((i++))]=https://www.kernel.org/pub/linux/libs/security/linux-privs/libcap2/libcap-2.24.tar.xz
+SLAX_BUNDLE_SOURCE_DOWNLOAD[((i++))]=ftp://ftp.gnupg.org/gcrypt/pinentry/pinentry-0.8.3.tar.bz2
+SLAX_BUNDLE_SOURCE_DOWNLOAD[((i++))]=http://ftp.gnu.org/gnu/pth/pth-2.0.7.tar.gz
+
+SLAX_BUNDLE_SOURCE_DOWNLOAD[((i++))]=ftp://ftp.gnupg.org/gcrypt/libgpg-error/libgpg-error-1.13.tar.bz2
+SLAX_BUNDLE_SOURCE_DOWNLOAD[((i++))]=ftp://ftp.gnupg.org/gcrypt/libassuan/libassuan-2.1.1.tar.bz2
+SLAX_BUNDLE_SOURCE_DOWNLOAD[((i++))]=ftp://ftp.gnupg.org/gcrypt/libgcrypt/libgcrypt-1.6.1.tar.bz2
+SLAX_BUNDLE_SOURCE_DOWNLOAD[((i++))]=ftp://ftp.gnupg.org/gcrypt/libksba/libksba-1.3.0.tar.bz2
+SLAX_BUNDLE_SOURCE_DOWNLOAD[((i++))]=ftp://ftp.gnupg.org/gcrypt/gnupg/${SLAX_BUNDLE_NAME%-*}-${SLAX_BUNDLE_VERSION}.tar.bz2
+
+# echo "${SLAX_BUNDLE_SOURCE_DOWNLOAD[@]}"
+SLAX_BUNDLE_DESCRIPTION="The GnuPG package is GNU's tool for secure communication and data storage. It can be used to encrypt data and to create digital signatures. It includes an advanced key management facility and is compliant with the proposed OpenPGP Internet standard as described in RFC2440 and the S/MIME standard as described by several RFCs. GnuPG 2 is the stable version of GnuPG integrating support for OpenPGP and S/MIME.
+
+This bundle includes:
+${SLAX_BUNDLE_SOURCE_DOWNLOAD[@]}"
+
+check_variables_for_errors
+
+download_all_sources
+
+extract_all_sources
+
+init_bundle_target_dir
+
+activate_required_bundles
+
+case "$SLAX_ARCH" in
+    i486)
+        rootlib=lib
+        ;;
+    x86_64)
+        rootlib=lib64
+        ;;
+esac
+
+export PATH=${SLAX_BUNDLE_TARGET}/usr/bin:$PATH
+export PKG_CONFIG_PATH=${SLAX_BUNDLE_TARGET}/${SLAX_LIBDIR}/pkgconfig:${SLAX_LIBDIR}/pkgconfig
+export CFLAGS=" $SLAX_CFLAGS -I${SLAX_BUNDLE_TARGET}/usr/include"
+export LDFLAGS=" -L${SLAX_BUNDLE_TARGET}/${SLAX_LIBDIR}"
+
+# pushd attr* || exit 1
+# sed -i -e 's|/@pkg_name@|&-@pkg_version@|' include/builddefs.in &&
+
+# INSTALL_USER=root  \
+# INSTALL_GROUP=root \
+# ./configure --prefix=/usr --disable-static &&
+# make
+# popd
+
+pushd libcap* || exit 1
+sed -i 's:LIBDIR:PAM_&:g' pam_cap/Makefile &&
+make
+sed -i '/install.*STALIBNAME/ s/^/#/' libcap/Makefile
+make prefix=/usr \
+     SBINDIR=/sbin \
+     PAM_LIBDIR=/${rootlib} \
+     RAISE_SETFCAP=no install \
+     DESTDIR=${SLAX_BUNDLE_TARGET} install
+chmod -v 755 ${SLAX_BUNDLE_TARGET}/${SLAX_LIBDIR}/libcap.so &&
+mv -v ${SLAX_BUNDLE_TARGET}/${SLAX_LIBDIR}/libcap.so.* ${SLAX_BUNDLE_TARGET}/${SLAX_LIBDIR} &&
+ln -sfv ../../${SLAX_LIBDIR}/libcap.so.2 ${SLAX_BUNDLE_TARGET}/${SLAX_LIBDIR}/libcap.so
+popd
+
+pushd pinentry* || exit 1
+./configure ${SLAX_CONFIGURE_OPTIONS}           &&
+make && make DESTDIR=${SLAX_BUNDLE_TARGET} install
+popd
+
+pushd pth* || exit 1
+sed -i 's#$(LOBJS): Makefile#$(LOBJS): pth_p.h Makefile#' Makefile.in &&
+./configure ${SLAX_CONFIGURE_OPTIONS}           \
+            --disable-static        \
+            --mandir=/usr/share/man &&
+make && make DESTDIR=${SLAX_BUNDLE_TARGET} install
+popd
+
+pushd libgpg-error* || exit 1
+./configure ${SLAX_CONFIGURE_OPTIONS}           \
+            --disable-static &&
+make && make DESTDIR=${SLAX_BUNDLE_TARGET} install
+popd
+
+pushd libassuan* || exit 1
+./configure ${SLAX_CONFIGURE_OPTIONS}           &&
+make && make DESTDIR=${SLAX_BUNDLE_TARGET} install
+popd
+
+pushd libgcrypt* || exit 1
+./configure ${SLAX_CONFIGURE_OPTIONS}           &&
+make && make DESTDIR=${SLAX_BUNDLE_TARGET} install
+popd
+
+pushd libksba* || exit 1
+./configure ${SLAX_CONFIGURE_OPTIONS}           &&
+make && make DESTDIR=${SLAX_BUNDLE_TARGET} install
+popd
+
+pushd gnupg* || exit 1
+./configure ${SLAX_CONFIGURE_OPTIONS} || exit 1
+# This is for make test
+export LD_LIBRARY_PATH=${SLAX_BUNDLE_TARGET}${SLAX_LIBDIR}
+echo $LD_LIBRARY_PATH
+make && make DESTDIR=${SLAX_BUNDLE_TARGET} install &&
+ln -sv gpg2  ${SLAX_BUNDLE_TARGET}/usr/bin/gpg  &&
+ln -sv gpgv2 ${SLAX_BUNDLE_TARGET}/usr/bin/gpgv
+popd
+
+# Make /etc/profile.d/gpg-agent.sh
+set -xv
+install -v -m755 -d ${SLAX_BUNDLE_TARGET}/etc
+install -v -m755 -d ${SLAX_BUNDLE_TARGET}/etc/profile.d
+cat > ${SLAX_BUNDLE_TARGET}/etc/profile.d/gpg-agent.sh << EOF
+#!/bin/sh
+
+# workaround pinentry fails to start on display :0
+if [ -f $HOME/.Xauthority ]; then
+    XAUTHORITY=$HOME/.Xauthority; export XAUTHORITY
+fi
+
+# Start the GnuPG agent and enable OpenSSH agent emulation
+gnupginf="\${HOME}/.gpg-agent-info"
+
+if pgrep -x -u "\${USER}" gpg-agent >/dev/null 2>&1; then
+    eval \`cat \$gnupginf\`
+    eval \`cut -d= -f1 \$gnupginf | xargs echo export\`
+else
+    eval \`gpg-agent -s --enable-ssh-support --daemon --write-env-file "\$gnupginf"\`
+fi
+EOF
+chmod 0755 ${SLAX_BUNDLE_TARGET}/etc/profile.d/gpg-agent.sh
+
+strip_unneeded_objects
+
+create_slax_bundle
