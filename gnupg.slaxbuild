@@ -158,8 +158,8 @@ cat > ${SLAX_BUNDLE_TARGET}/etc/profile.d/gpg-agent.sh << EOF
 #!/bin/sh
 
 # workaround pinentry fails to start on display :0
-if [ -f $HOME/.Xauthority ]; then
-    XAUTHORITY=$HOME/.Xauthority; export XAUTHORITY
+if [ -f \$HOME/.Xauthority ]; then
+    XAUTHORITY=\$HOME/.Xauthority; export XAUTHORITY
 fi
 
 # Start the GnuPG agent and enable OpenSSH agent emulation
