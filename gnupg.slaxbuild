@@ -54,10 +54,13 @@ SLAX_BUNDLE_SOURCE_DOWNLOAD[((i++))]=ftp://ftp.gnupg.org/gcrypt/libksba/libksba-
 SLAX_BUNDLE_SOURCE_DOWNLOAD[((i++))]=ftp://ftp.gnupg.org/gcrypt/gnupg/${SLAX_BUNDLE_NAME%-*}-${SLAX_BUNDLE_VERSION}.tar.bz2
 
 # echo "${SLAX_BUNDLE_SOURCE_DOWNLOAD[@]}"
-SLAX_BUNDLE_DESCRIPTION="The GnuPG package is GNU's tool for secure communication and data storage. It can be used to encrypt data and to create digital signatures. It includes an advanced key management facility and is compliant with the proposed OpenPGP Internet standard as described in RFC2440 and the S/MIME standard as described by several RFCs. GnuPG 2 is the stable version of GnuPG integrating support for OpenPGP and S/MIME.
-
-This bundle includes:
-${SLAX_BUNDLE_SOURCE_DOWNLOAD[@]}"
+SLAX_BUNDLE_DESCRIPTION="The GnuPG package is GNU's tool for secure
+communication and data storage. It can be used to encrypt data and to
+create digital signatures. It includes an advanced key management
+facility and is compliant with the proposed OpenPGP Internet standard
+as described in RFC2440 and the S/MIME standard as described by
+several RFCs. GnuPG 2 is the stable version of GnuPG integrating
+support for OpenPGP and S/MIME."
 
 check_variables_for_errors
 
