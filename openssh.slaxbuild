@@ -1,0 +1,62 @@
+#!/bin/bash
+. /usr/share/slax/slaxbuildlib
+
+
+SLAX_BUNDLE_NAME="openssh-6.2p1"
+
+SLAX_BUNDLE_VERSION="6.2p1"
+
+
+SLAX_BUNDLE_DESCRIPTION="OpenSSH is a FREE version of the SSH connectivity tools that technical users of the Internet rely on.
+
+Users of telnet, rlogin, and ftp may not realize that their password is transmitted across the Internet unencrypted, but it is. OpenSSH encrypts all traffic (including passwords) to effectively eliminate eavesdropping, connection hijacking, and other attacks. Additionally, OpenSSH provides secure tunneling capabilities and several authentication methods, and supports all SSH protocol versions."
+
+SLAX_BUNDLE_CATEGORIES="network, security"
+
+SLAX_BUNDLES_REQUIRED="openssl-solibs"
+
+SLAX_BUNDLES_REQUIRED_TO_COMPILE_ONLY="openssl-solibs"
+
+SLAX_BUNDLE_MAINTAINER_NAME="lht"
+SLAX_BUNDLE_MAINTAINER_EMAIL="holylight@gmail.com"
+
+SLAX_BUNDLE_SOURCE_DOWNLOAD[0]="ftp://ftp.openbsd.org/pub/OpenBSD/OpenSSH/portable/${SLAX_BUNDLE_NAME%-*}-${SLAX_BUNDLE_VERSION}.tar.gz"
+SLAX_BUNDLE_SOURCE_DOWNLOAD[1]=""
+SLAX_BUNDLE_SOURCE_DOWNLOAD[2]=""
+
+
+
+check_variables_for_errors
+
+download_all_sources
+
+extract_all_sources
+
+init_bundle_target_dir
+
+activate_required_bundles
+
+
+umask 0022
+cd ${SLAX_BUNDLE_NAME%-*}-${SLAX_BUNDLE_VERSION}
+CFLAGS="${SLAX_CFLAGS}" CXXFLAGS="${SLAX_CFLAGS}" ./configure ${SLAX_CONFIGURE_OPTIONS} \
+	--libexecdir=${SLAX_LIBDIR}/ssh \
+	--localstatedir=/var \
+	--sysconfdir=/etc/ssh \
+	--with-ssl-engine \
+	--with-xauth=/usr/bin/xauth \
+	--with-privsep-user=nobody \
+	--with-md5-passwords \
+	--with-pid-dir=/run \
+
+
+make clean
+make -j 8 || make || exit 1
+make install DESTDIR="${SLAX_BUNDLE_TARGET}"
+install -dm755 ${SLAX_BUNDLE_TARGET}/etc/rc.d
+install -m744 opensshd.init ${SLAX_BUNDLE_TARGET}/etc/rc.d/rc.sshd
+
+
+strip_unneeded_objects
+
+create_slax_bundle
