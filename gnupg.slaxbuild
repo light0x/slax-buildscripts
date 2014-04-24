@@ -93,20 +93,23 @@ export LDFLAGS=" -L${SLAX_BUNDLE_TARGET}/${SLAX_LIBDIR}"
 # INSTALL_GROUP=root \
 # ./configure --prefix=/usr --disable-static &&
 # make
+# make DIST_ROOT=${SLAX_BUNDLE_TARGET} install install-lib install-dev
+# rm -f ${SLAX_BUNDLE_TARGET}/${SLAX_LIBDIR}/libattr.a
+# rm -f ${SLAX_BUNDLE_TARGET}/usr/share/man/man2
 # popd
 
 pushd libcap* || exit 1
 sed -i 's:LIBDIR:PAM_&:g' pam_cap/Makefile &&
-make
-sed -i '/install.*STALIBNAME/ s/^/#/' libcap/Makefile
+make &&
+sed -i '/install.*STALIBNAME/ s/^/#/' libcap/Makefile &&
 make prefix=/usr \
-     SBINDIR=/sbin \
-     PAM_LIBDIR=/${rootlib} \
-     RAISE_SETFCAP=no install \
-     DESTDIR=${SLAX_BUNDLE_TARGET} install
+    lib=/${rootlib} \
+    DESTDIR=${SLAX_BUNDLE_TARGET} \
+    RAISE_SETFCAP=no install &&
+install -v -m755 -d ${SLAX_BUNDLE_TARGET}/${rootlib} &&
 chmod -v 755 ${SLAX_BUNDLE_TARGET}/${SLAX_LIBDIR}/libcap.so &&
-mv -v ${SLAX_BUNDLE_TARGET}/${SLAX_LIBDIR}/libcap.so.* ${SLAX_BUNDLE_TARGET}/${SLAX_LIBDIR} &&
-ln -sfv ../../${SLAX_LIBDIR}/libcap.so.2 ${SLAX_BUNDLE_TARGET}/${SLAX_LIBDIR}/libcap.so
+mv -v ${SLAX_BUNDLE_TARGET}/${SLAX_LIBDIR}/libcap.so.* ${SLAX_BUNDLE_TARGET}/${rootlib}/ &&
+ln -sfv ../../${rootlib}/libcap.so.2 ${SLAX_BUNDLE_TARGET}/${SLAX_LIBDIR}/libcap.so
 popd
 
 pushd pinentry* || exit 1
