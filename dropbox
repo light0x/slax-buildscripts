@@ -1,0 +1,95 @@
+#!/bin/bash
+. /usr/share/slax/slaxbuildlib
+
+
+SLAX_BUNDLE_NAME="dropbox-bundle"
+
+SLAX_BUNDLE_VERSION="2.6.31"
+
+
+SLAX_BUNDLE_DESCRIPTION="A free service that lets you bring your photos, docs, and videos anywhere and share them easily."
+
+# Category tags. At least one value is required.
+# Specify which categories the bundle you're building belongs to.
+# You can specify more than one. Separate by space or comma.
+# Possible values are:
+#    artwork, games, network, develop, console, graphics,
+#    editors, security, drivers, libraries, education
+#    multimedia, system, multilang, utilities
+#
+SLAX_BUNDLE_CATEGORIES="utilities"
+
+# SLAX_BUNDLES_REQUIRED="openssl-solibs"
+
+SLAX_BUNDLES_REQUIRED_TO_COMPILE_ONLY=""
+
+SLAX_BUNDLE_MAINTAINER_NAME="lht"
+SLAX_BUNDLE_MAINTAINER_EMAIL="holylight@gmail.com"
+
+case "$SLAX_ARCH" in
+    i486) SLAX_CFLAGS="-Os -march=i486 -mtune=i686"
+        SLAX_LIBDIR=/usr/lib
+        SLAX_64_FLAG=""
+	src_arch=x86
+        ;;
+    x86_64) SLAX_CFLAGS="-Os -fPIC"
+        SLAX_LIBDIR=/usr/lib64
+        SLAX_64_FLAG="64"
+	src_arch=x86_64
+        ;;
+esac
+
+i=0
+SLAX_BUNDLE_SOURCE_DOWNLOAD[((i++))]=https://dl.dropboxusercontent.com/u/17/${SLAX_BUNDLE_NAME%-*}-lnx.${src_arch}-${SLAX_BUNDLE_VERSION}.tar.gz
+SLAX_BUNDLE_SOURCE_DOWNLOAD[((i++))]=https://linux.dropbox.com/packages/dropbox.py
+
+check_variables_for_errors
+
+download_all_sources
+
+extract_all_sources
+
+init_bundle_target_dir
+
+activate_required_bundles
+
+# export PATH=${SLAX_BUNDLE_TARGET}/usr/bin:$PATH
+# export PKG_CONFIG_PATH=${SLAX_BUNDLE_TARGET}/${SLAX_LIBDIR}/pkgconfig:${SLAX_LIBDIR}/pkgconfig
+# export CFLAGS=" $SLAX_CFLAGS -I${SLAX_BUNDLE_TARGET}/usr/include"
+# export LDFLAGS=" -L${SLAX_BUNDLE_TARGET}/${SLAX_LIBDIR}"
+
+set -x
+
+install -d ${SLAX_BUNDLE_TARGET}/opt
+cp -R .dropbox-dist ${SLAX_BUNDLE_TARGET}/opt/dropbox
+
+find "${SLAX_BUNDLE_TARGET}/opt/dropbox/" -type f -exec chmod 644 {} \;
+chmod 755 "${SLAX_BUNDLE_TARGET}/opt/dropbox/dropboxd"
+chmod 755 "${SLAX_BUNDLE_TARGET}/opt/dropbox/dropbox"
+
+install -d "${SLAX_BUNDLE_TARGET}/usr/bin"
+ln -s "/opt/dropbox/dropboxd" "${SLAX_BUNDLE_TARGET}/usr/bin/dropboxd"
+
+mkdir dropbox-cli
+pushd dropbox-cli
+sed -e "s@^DROPBOXD_PATH = .*\$@DROPBOXD_PATH = \"/opt/dropbox/dropboxd\"@g" \
+    -e "1,1{s@python@python2@g}" \
+    -e "s@~/.dropbox-dist/dropboxd@/opt/dropbox/dropboxd@g" \
+    -e "s@/usr/share/applications/dropbox.desktop@/etc/xdg/autostart/dropbox.desktop@g" ../dropbox.py > dropbox.py
+install -Dm755 dropbox.py ${SLAX_BUNDLE_TARGET}/usr/bin/dropbox
+popd
+
+install -d ${SLAX_BUNDLE_TARGET}/etc/xdg/autostart/
+cat > ${SLAX_BUNDLE_TARGET}/etc/xdg/autostart/dropbox.desktop << EOF
+[Desktop Entry]
+Version=1.0
+Name=Dropbox
+Icon=/opt/dropbox/images/hicolor/16x16/status/dropboxstatus-logo.png
+Exec=/usr/bin/dropboxd
+Terminal=false
+Type=Application
+EOF
+
+# strip_unneeded_objects
+
+create_slax_bundle
