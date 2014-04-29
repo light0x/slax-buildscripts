@@ -1,0 +1,64 @@
+#!/bin/bash
+. /usr/share/slax/slaxbuildlib
+
+
+SLAX_BUNDLE_NAME="virtualenv2"
+
+SLAX_BUNDLE_VERSION="1.11.4"
+
+SLAX_BUNDLE_DESCRIPTION="Virtual Python Environment builder"
+
+# Category tags. At least one value is required.
+# Specify which categories the bundle you're building belongs to.
+# You can specify more than one. Separate by space or comma.
+# Possible values are:
+#    artwork, games, network, develop, console, graphics,
+#    editors, security, drivers, libraries, education
+#    multimedia, system, multilang, utilities
+#
+SLAX_BUNDLE_CATEGORIES="develop"
+
+SLAX_BUNDLES_REQUIRED="python"
+
+SLAX_BUNDLES_REQUIRED_TO_COMPILE_ONLY="python"
+
+SLAX_BUNDLE_MAINTAINER_NAME="lht"
+SLAX_BUNDLE_MAINTAINER_EMAIL="holylight@gmail.com"
+
+i=0
+SLAX_BUNDLE_SOURCE_DOWNLOAD[((i++))]=http://pypi.python.org/packages/source/v/virtualenv/virtualenv-${SLAX_BUNDLE_VERSION}.tar.gz
+
+check_variables_for_errors
+
+download_all_sources
+
+extract_all_sources
+
+init_bundle_target_dir
+
+activate_required_bundles
+
+export PATH=${SLAX_BUNDLE_TARGET}/usr/bin:$PATH
+export PKG_CONFIG_PATH=${SLAX_BUNDLE_TARGET}/${SLAX_LIBDIR}/pkgconfig:${SLAX_LIBDIR}/pkgconfig
+export CFLAGS=" $SLAX_CFLAGS -I${SLAX_BUNDLE_TARGET}/usr/include"
+export LDFLAGS=" -L${SLAX_BUNDLE_TARGET}/${SLAX_LIBDIR}"
+
+set -x
+pushd virtualenv* || exit 1
+python2 setup.py build
+python2 setup.py install --prefix=/usr --root=${SLAX_BUNDLE_TARGET}
+mv "${SLAX_BUNDLE_TARGET}/usr/bin/virtualenv" "${SLAX_BUNDLE_TARGET}/usr/bin/virtualenv2"
+sed -i -e "1,1{s@python@python2@g}" \
+    ${SLAX_BUNDLE_TARGET}/usr/${SLAX_LIBDIR##*/}/$(python2 -c 'import sys; print "python%d.%d" % (sys.version_info.major, sys.version_info.minor)')/site-packages/virtualenv.py
+
+DEFAULT_PYVER=$(python -V)
+BUNDLE_PYVER=$(python2 -V)
+if [ $DEFAULT_PYVER = $BUNDLE_PYVER ]; then
+    ln -sv virtualenv2 ${SLAX_BUNDLE_TARGET}/usr/bin/virtualenv
+fi
+
+popd
+
+strip_unneeded_objects
+
+create_slax_bundle
