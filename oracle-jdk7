@@ -1,0 +1,116 @@
+#!/bin/bash
+. /usr/share/slax/slaxbuildlib
+
+
+SLAX_BUNDLE_NAME="oracle-jdk7"
+
+_version=7u55
+_build=b13
+
+SLAX_BUNDLE_VERSION=$_version
+
+SLAX_BUNDLE_DESCRIPTION="JDK (Java SE Development Kit)
+
+For Java Developers. Includes a complete JRE plus tools for
+developing, debugging, and monitoring Java applications."
+
+# Category tags. At least one value is required.
+# Specify which categories the bundle you're building belongs to.
+# You can specify more than one. Separate by space or comma.
+# Possible values are:
+#    artwork, games, network, develop, console, graphics,
+#    editors, security, drivers, libraries, education
+#    multimedia, system, multilang, utilities
+#
+SLAX_BUNDLE_CATEGORIES="develop"
+
+SLAX_BUNDLES_REQUIRED="libxslt"
+
+SLAX_BUNDLES_REQUIRED_TO_COMPILE_ONLY=""
+
+SLAX_BUNDLE_MAINTAINER_NAME="lht"
+SLAX_BUNDLE_MAINTAINER_EMAIL="holylight@gmail.com"
+
+case "$SLAX_ARCH" in
+    i486) SLAX_CFLAGS="-Os -march=i486 -mtune=i686"
+        SLAX_LIBDIR=/usr/lib
+        SLAX_64_FLAG=""
+	_arch=i586
+	_jarch=i386
+        ;;
+    x86_64) SLAX_CFLAGS="-Os -fPIC"
+        SLAX_LIBDIR=/usr/lib64
+        SLAX_64_FLAG="64"
+	_arch=x64
+	_jarch=amd64
+        ;;
+esac
+
+i=0
+SLAX_BUNDLE_SOURCE_DOWNLOAD[((i++))]=http://download.oracle.com/otn-pub/java/jdk/$_version-$_build/jdk-$_version-linux-$_arch.tar.gz
+
+check_variables_for_errors
+
+for i in "${SLAX_BUNDLE_SOURCE_DOWNLOAD[@]}"; do
+    if echo "$i" | grep -q "://"; then
+        wget --no-check-certificate --no-cookies --header "Cookie: oraclelicense=a" -c "$i"
+    fi
+done
+
+extract_all_sources
+
+init_bundle_target_dir
+
+activate_required_bundles
+
+# export PATH=${SLAX_BUNDLE_TARGET}/usr/bin:$PATH
+# export PKG_CONFIG_PATH=${SLAX_BUNDLE_TARGET}/${SLAX_LIBDIR}/pkgconfig:${SLAX_LIBDIR}/pkgconfig
+# export CFLAGS=" $SLAX_CFLAGS -I${SLAX_BUNDLE_TARGET}/usr/include"
+# export LDFLAGS=" -L${SLAX_BUNDLE_TARGET}/${SLAX_LIBDIR}"
+
+set -x
+pushd jdk1* || exit 1
+install -d ${SLAX_BUNDLE_TARGET}/usr/java
+
+rm -r db/bin/*.bat jre/{plugin/,COPYRIGHT,LICENSE,*.txt} man/ja
+rm jre/lib/$_jarch/fxavcodecplugin*.so
+
+install -d ${SLAX_BUNDLE_TARGET}/usr/share/licenses/jdk
+mv jre/lib/desktop/* man ${SLAX_BUNDLE_TARGET}/usr/share/
+mv COPYRIGHT LICENSE *.txt ${SLAX_BUNDLE_TARGET}/usr/share/licenses/jdk/
+mv * ${SLAX_BUNDLE_TARGET}/usr/java/
+
+install -d ${SLAX_BUNDLE_TARGET}/usr/lib/mozilla/plugins
+ln -s ${SLAX_BUNDLE_TARGET}/usr/java/jre/lib/$_jarch/libnpjp2.so ${SLAX_BUNDLE_TARGET}/usr/lib/mozilla/plugins/
+popd
+
+# install -d ${SLAX_BUNDLE_TARGET}/etc/xdg/autostart/
+
+cat > jdk.sh <<EOF
+export JAVA_HOME=/usr/java
+export J2SDKDIR=\${JAVA_HOME}
+export J2REDIR=\${JAVA_HOME}/jre
+export PATH=$PATH:\${JAVA_HOME}/bin:\${JAVA_HOME}/db/bin:\${JAVA_HOME}/jre/bin
+export DERBY_HOME=\${JAVA_HOME}/db
+EOF
+install -Dm755 jdk.sh ${SLAX_BUNDLE_TARGET}/etc/profile.d/jdk.sh
+
+cat > javaws-launcher <<EOF
+#!/bin/sh
+
+if [ -z "\$@" ]; then
+  exec javaws -viewer
+else
+  exec javaws "\$@"
+fi
+EOF
+install -Dm755 javaws-launcher ${SLAX_BUNDLE_TARGET}/usr/java/jre/bin/javaws-launcher
+
+cat > derby.conf <<EOF
+DERBY_OPTS="-Dderby.stream.error.file=/var/log/derby.log"
+EOF
+install -Dm644 derby.conf ${SLAX_BUNDLE_TARGET}/etc/derby.conf
+
+# strip_unneeded_objects
+
+create_slax_bundle
