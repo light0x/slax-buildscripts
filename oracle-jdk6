@@ -2,11 +2,11 @@
 . /usr/share/slax/slaxbuildlib
 
 
-SLAX_BUNDLE_NAME="oracle-jdk7"
+SLAX_BUNDLE_NAME="oracle-jdk6"
 
 _targdir=${SLAX_BUNDLE_NAME##*-}
-_version=7u55
-_build=b13
+_version=6u45
+_build=b06
 
 SLAX_BUNDLE_VERSION=$_version
 
@@ -25,7 +25,7 @@ developing, debugging, and monitoring Java applications."
 #
 SLAX_BUNDLE_CATEGORIES="develop"
 
-SLAX_BUNDLES_REQUIRED="libxslt"
+SLAX_BUNDLES_REQUIRED="libxslt, unixODBC"
 
 SLAX_BUNDLES_REQUIRED_TO_COMPILE_ONLY=""
 
@@ -48,7 +48,7 @@ case "$SLAX_ARCH" in
 esac
 
 i=0
-SLAX_BUNDLE_SOURCE_DOWNLOAD[((i++))]=http://download.oracle.com/otn-pub/java/jdk/$_version-$_build/jdk-$_version-linux-$_arch.tar.gz
+SLAX_BUNDLE_SOURCE_DOWNLOAD[((i++))]=http://download.oracle.com/otn-pub/java/jdk/$_version-$_build/jdk-$_version-linux-$_arch.bin
 
 check_variables_for_errors
 
@@ -58,7 +58,7 @@ for i in "${SLAX_BUNDLE_SOURCE_DOWNLOAD[@]}"; do
     fi
 done
 
-extract_all_sources
+# extract_all_sources
 
 init_bundle_target_dir
 
@@ -69,12 +69,13 @@ activate_required_bundles
 # export CFLAGS=" $SLAX_CFLAGS -I${SLAX_BUNDLE_TARGET}/usr/include"
 # export LDFLAGS=" -L${SLAX_BUNDLE_TARGET}/${SLAX_LIBDIR}"
 
+sh jdk-$_version-linux-$_arch.bin -noregister
+
 set -x
 pushd jdk1* || exit 1
 install -d ${SLAX_BUNDLE_TARGET}/usr/$_targdir
 
 rm -r db/bin/*.bat jre/{plugin/,COPYRIGHT,LICENSE,*.txt} man/ja
-rm jre/lib/$_jarch/fxavcodecplugin*.so
 
 install -d ${SLAX_BUNDLE_TARGET}/usr/share/licenses/$_targdir
 mv jre/lib/desktop/* man ${SLAX_BUNDLE_TARGET}/usr/share/
